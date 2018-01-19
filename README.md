@@ -70,11 +70,23 @@ $ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/fle
 $ docker push gcr.io/kubernetes-1-151323/flexvol:lita-flexvol 
 
 ## NodeAgent Binary and Docker Image
-`./scripts/build-docker.sh -c -i latest`
 
-To just build the Nodeagent binary
+$ cd proto-udsuspver/nodeagent/
 
-`bazel build //nodeagent:nodeagent`
+$ dep ensure
+
+$ go build nodeagent.go
+
+$ mkdir target_dir
+
+$ cp docker/* target_dir/
+
+$ cp nodeagent target_dir/
+
+$ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/nodeagent:lita" target_dir
+
+$ docker push gcr.io/kubernetes-1-151323/nodeagent:lita 
+
 
 # How to setup the FlexVolume driver
 See `nodeagent/nodeagent.yaml` initContainer to see how the FlexVolume driver is setup.

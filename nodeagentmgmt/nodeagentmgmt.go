@@ -12,13 +12,14 @@ import (
 	"google.golang.org/grpc"
 
 	pb "github.com/colabsaumoh/proto-udsuspver/protos/mgmtintf_v1"
-	wlapi "github.com/colabsaumoh/proto-udsuspver/workloadapi"
+	mwi "github.com/colabsaumoh/proto-udsuspver/mgmtwlhintf"
 )
 
 type Server struct {
-	wlapis     map[string]*wlapi.Server
+	wlmgmts     map[string]mwi.WorkloadMgmtInterface
 	pathPrefix string
 	done       chan bool //main 2 mgmt-api server to stop
+	wli		*mwi.WlHandler
 }
 
 type Client struct {
@@ -27,12 +28,13 @@ type Client struct {
 	isUds bool
 }
 
-func NewServer(pathPrefix string) *Server {
-	s := new(Server)
-	s.done = make(chan bool, 1)
-	s.pathPrefix = pathPrefix
-	s.wlapis = make(map[string]*wlapi.Server)
-	return s
+func NewServer(pathPrefix string, wli *mwi.WlHandler) *Server {
+	return &Server{
+		done: make(chan bool, 1),
+		pathPrefix: pathPrefix,
+		wli: wli,
+		wlmgmts: make(map[string]mwi.WorkloadMgmtInterface),
+	}
 }
 
 func (s *Server) Stop() {
@@ -77,43 +79,43 @@ func (s *Server) Serve(isUds bool, path string) {
 	grpcServer.Serve(lis)
 }
 
-func (s *Server) AddListener(ctx context.Context, request *pb.WorkloadInfo) (*pb.Response, error) {
+func (s *Server) WorkloadAdded(ctx context.Context, request *pb.WorkloadInfo) (*pb.Response, error) {
 
 	log.Printf("%v", request)
-	if _, ok := s.wlapis[request.Uid]; ok == true {
+	if _, ok := s.wlmgmts[request.Uid]; ok == true {
 		status := &pb.Response_Status{Code: pb.Response_Status_ALREADY_EXISTS, Message: "Already present"}
 		return &pb.Response{Status: status}, nil
 	}
 
-	s.wlapis[request.Uid] = wlapi.NewServer(request, s.pathPrefix)
-	go s.wlapis[request.Uid].Serve()
+	s.wlmgmts[request.Uid] = s.wli.NewWlhCb(request, s.wli.Wl, s.pathPrefix)
+	go s.wlmgmts[request.Uid].Serve()
 	log.Printf("%v", s)
 
 	status := &pb.Response_Status{Code: pb.Response_Status_OK, Message: "Ok"}
 	return &pb.Response{Status: status}, nil
 }
 
-func (s *Server) DelListener(ctx context.Context, request *pb.WorkloadInfo) (*pb.Response, error) {
-	if _, ok := s.wlapis[request.Uid]; ok == false {
+func (s *Server) WorkloadDeleted(ctx context.Context, request *pb.WorkloadInfo) (*pb.Response, error) {
+	if _, ok := s.wlmgmts[request.Uid]; ok == false {
 		status := &pb.Response_Status{Code: pb.Response_Status_NOT_FOUND, Message: "Not present"}
 		return &pb.Response{Status: status}, nil
 	}
 
 	log.Printf("%s: Stop.", request.Uid)
-	s.wlapis[request.Uid].Stop()
-	s.wlapis[request.Uid].WaitDone()
+	s.wlmgmts[request.Uid].Stop()
+	s.wlmgmts[request.Uid].WaitDone()
 
-	delete(s.wlapis, request.Uid)
+	delete(s.wlmgmts, request.Uid)
 
 	status := &pb.Response_Status{Code: pb.Response_Status_OK, Message: "Ok"}
 	return &pb.Response{Status: status}, nil
 }
 
 func (s *Server) CloseAllWlds() {
-	for _, wld := range s.wlapis {
+	for _, wld := range s.wlmgmts {
 		wld.Stop()
 	}
-	for _, wld := range s.wlapis {
+	for _, wld := range s.wlmgmts {
 		wld.WaitDone()
 	}
 }
@@ -122,6 +124,8 @@ func unixDialer(target string, timeout time.Duration) (net.Conn, error) {
 	return net.DialTimeout("unix", target, timeout)
 }
 
+
+// Used by the flexvolume driver to interface with the nodeagement mgmt grpc server
 func NewClient(isUds bool, path string) *Client {
 	c := new(Client)
 	c.dest = path
@@ -165,22 +169,22 @@ func (c *Client) client() (pb.NodeAgentMgmtClient, error) {
 	return pb.NewNodeAgentMgmtClient(conn), nil
 }
 
-func (c *Client) AddListener(ninputs *pb.WorkloadInfo) (*pb.Response, error) {
+func (c *Client) WorkloadAdded(ninputs *pb.WorkloadInfo) (*pb.Response, error) {
 	cl, err := c.client()
 	if err != nil {
 		return nil, err
 	}
 
-	return cl.AddListener(context.Background(), ninputs)
+	return cl.WorkloadAdded(context.Background(), ninputs)
 }
 
-func (c *Client) DelListener(ninputs *pb.WorkloadInfo) (*pb.Response, error) {
+func (c *Client) WorkloadDeleted(ninputs *pb.WorkloadInfo) (*pb.Response, error) {
 	cl, err := c.client()
 	if err != nil {
 		return nil, err
 	}
 
-	return cl.DelListener(context.Background(), ninputs)
+	return cl.WorkloadDeleted(context.Background(), ninputs)
 }
 
 func (c *Client) Close() {

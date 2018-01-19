@@ -15,3 +15,13 @@
 
 # Vendor dir
 vendor/
+
+#Idea
+.idea/
+
+# Bazel
+/bazel-*
+vendor
+
+# Local build bin
+/bin

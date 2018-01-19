@@ -49,10 +49,15 @@ The workload API is going to be part of the nodeagent. The nodeagent shown here 
 Note: Unless you are changing the Grpc interface for FlexVolume driver you will not need to do this.
 
 ## FlexVolume Binary and Docker Image
-`./scripts/build-docker.sh -i flexvol -c -i latest`
-
-To just build the binary
-`bazel build //flexvol:flexvol`
+$ cd proto-udsuspver/flexvol/ 
+$dep ensure
+$ go build flexvoldriver.go
+$ mv flexvoldriver flexvol
+$ mkdir target_dir
+$ cp docker/flexvol.sh target_dir/
+$ cp docker/Dockerfile.debug target_dir/
+$ cp flexvol target_dir/
+$ docker build -f target_dir/Dockerfile.debug -t "gcr.io/istio-testing/flexvol:lita-flexvol" target_dir
 
 ## NodeAgent Binary and Docker Image
 `./scripts/build-docker.sh -c -i latest`

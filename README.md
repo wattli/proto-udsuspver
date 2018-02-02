@@ -50,21 +50,43 @@ Note: Unless you are changing the Grpc interface for FlexVolume driver you will 
 
 ## FlexVolume Binary and Docker Image
 $ cd proto-udsuspver/flexvol/ 
-$dep ensure
+
+$ dep ensure
+
 $ go build flexvoldriver.go
+
 $ mv flexvoldriver flexvol
+
 $ mkdir target_dir
+
 $ cp docker/flexvol.sh target_dir/
+
 $ cp docker/Dockerfile.debug target_dir/
+
 $ cp flexvol target_dir/
-$ docker build -f target_dir/Dockerfile.debug -t "gcr.io/istio-testing/flexvol:lita-flexvol" target_dir
+
+$ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/flexvol:lita-flexvol" target_dir
+
+$ docker push gcr.io/kubernetes-1-151323/flexvol:lita-flexvol 
 
 ## NodeAgent Binary and Docker Image
-`./scripts/build-docker.sh -c -i latest`
 
-To just build the Nodeagent binary
+$ cd proto-udsuspver/nodeagent/
 
-`bazel build //nodeagent:nodeagent`
+$ dep ensure
+
+$ go build nodeagent.go
+
+$ mkdir target_dir
+
+$ cp docker/* target_dir/
+
+$ cp nodeagent target_dir/
+
+$ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/nodeagent:lita" target_dir
+
+$ docker push gcr.io/kubernetes-1-151323/nodeagent:lita 
+
 
 # How to setup the FlexVolume driver
 See `nodeagent/nodeagent.yaml` initContainer to see how the FlexVolume driver is setup.

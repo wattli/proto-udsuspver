@@ -67,7 +67,7 @@ $ cp flexvol target_dir/
 
 $ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/flexvol:lita-flexvol" target_dir
 
-$ docker push gcr.io/kubernetes-1-151323/flexvol:lita-flexvol 
+$ gcloud docker -- push gcr.io/kubernetes-1-151323/flexvol:lita-flexvol 
 
 ## NodeAgent Binary and Docker Image
 
@@ -85,7 +85,7 @@ $ cp nodeagent target_dir/
 
 $ docker build -f target_dir/Dockerfile.debug -t "gcr.io/kubernetes-1-151323/nodeagent:lita" target_dir
 
-$ docker push gcr.io/kubernetes-1-151323/nodeagent:lita 
+$ gcloud docker -- push gcr.io/kubernetes-1-151323/nodeagent:lita 
 
 
 # How to setup the FlexVolume driver
